@@ -1,28 +1,56 @@
 import torch
 import torchvision
 
+from utils import get_device
 from torch.utils.data import Dataset
 
+device = get_device()
+
+time_window = 100000
+time_step = 0.01
+noise = 0.2
+
+default_train_split = 0.8
+default_tau = 100
+
 class SineData(Dataset):
-    def __init__(self, T:int=1000, num_train:int=600, tau:int=4):
+    @staticmethod
+    def _gen_sine_data(T:int = time_window) -> tuple:
+        time = torch.arange(1, T+1, dtype=torch.float32)
+        print(len(time))
+        x = torch.sin(time_step * time) + torch.randn(T) * noise
+        return time, x
+    
+    def __init__(self, train:bool=True, T:int=time_window, train_split:float=default_train_split, tau:int=default_tau):
+        super().__init__()
         self.T = T
-        self.num_train=num_train
+        self.train_split = train_split
         self.tau=tau
         
-        self.time = torch.arange(1, T+1, dtype=torch.float32)
-        self.x = torch.sin(0.01 * self.time) + torch.randn(T) * 0.2
+        time, x = self._gen_sine_data(self.T)
 
-    def __len__(self):
-        return self.T
+        features = torch.stack([x[i : self.T-self.tau+i] for i in range(self.tau)],1)
+        labels = x[self.tau:].reshape(-1,1)
 
-    def __getitem__(self, idx):
-        return self.time[idx], self.x[idx]
-
-    def get_dataloader(self, train = 0):
-        features = [self.x[i : self.T-self.tau+i] for i in range(self.tau)]
         print(len(features))
         print(len(features[0]))
         print(type(features[0]))
-        self.features = torch.stack(features,1) # Stacking elements into a new tensor along a certain dimension
-        print(self.features.shape)
-        self.labels = [self.x[i] for i in range(self.tau, self.T)]
+        print(features.shape)
+
+
+        self.N = len(labels)
+        num_train = int(train_split * self.N)
+        if train:
+            self.features = features[0:num_train].to(device)
+            self.labels = labels[0:num_train].to(device)
+
+        else:
+            self.features = features[num_train:self.N].to(device)
+            self.labels = labels[num_train:self.N].to(device)
+
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        return self.features[idx], self.labels[idx]
