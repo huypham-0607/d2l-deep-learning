@@ -7,6 +7,7 @@ device = get_device()
 
 class LinearRegression(nn.Module):
     def __init__(self, num_features:int, out_features:int) -> None:
+        super().__init__()
         self.lin = nn.Linear(
             in_features = num_features,
             out_features = 1,

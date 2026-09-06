@@ -6,9 +6,9 @@ from torch.utils.data import Dataset
 
 device = get_device()
 
-time_window = 100000
-time_step = 0.01
-noise = 0.2
+time_window = 20000
+time_step = 0.001
+noise = 0.05
 
 default_train_split = 0.8
 default_tau = 100
@@ -30,7 +30,9 @@ class SineData(Dataset):
         time, x = self._gen_sine_data(self.T)
 
         features = torch.stack([x[i : self.T-self.tau+i] for i in range(self.tau)],1)
-        labels = x[self.tau:].reshape(-1,1)
+        labels = x[self.tau:]
+        time   = time[self.tau:]
+        x      = x[self.tau:]
 
         print(len(features))
         print(len(features[0]))
@@ -41,10 +43,14 @@ class SineData(Dataset):
         self.N = len(labels)
         num_train = int(train_split * self.N)
         if train:
+            self.time = time[0:num_train].to(device)
+            self.x = x[0:num_train].to(device)
             self.features = features[0:num_train].to(device)
             self.labels = labels[0:num_train].to(device)
 
         else:
+            self.time = time[num_train:self.N].to(device)
+            self.x = x[num_train:self.N].to(device)
             self.features = features[num_train:self.N].to(device)
             self.labels = labels[num_train:self.N].to(device)
 
